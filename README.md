@@ -7,7 +7,7 @@
 [![docs.rs](https://img.shields.io/docsrs/clsx?color=blue)](https://docs.rs/clsx)
 [![License](https://img.shields.io/crates/l/clsx)](#license)
 
-A single-pass, flexible, and highly efficient library for assembling “className” strings in Rust.
+A **single-pass**, flexible, and highly efficient library for assembling “className” strings in Rust.
 
 ## Overview
 
@@ -15,9 +15,9 @@ A single-pass, flexible, and highly efficient library for assembling “classNam
 - **Flexible** – Supports:
     - Strings, numbers, booleans
     - Arrays/slices, vectors, options
-    - Hash maps (`HashMap<String, bool>`) to mimic JS object style
+    - Hash maps (`HashMap<String, bool>`) to mimic JS object usage
     - Tuples `(bool, &str)` or `(bool, String)` for conditional insertion
-    - Closures that return classable arguments
+    - Closures returning something that also implements `ClsxArg`
 - **Stable Rust** – No nightly features required.
 
 <details>
@@ -26,7 +26,7 @@ A single-pass, flexible, and highly efficient library for assembling “classNam
 - [Installation](#installation)
 - [Usage](#usage)
 - [API](#api)
-- [Modes](#modes)
+- [Advanced Usage](#advanced-usage)
 - [Benchmarks](#benchmarks)
 - [Support](#support)
 - [Tailwind Support](#tailwind-support)
@@ -44,7 +44,7 @@ Add `clsx` to your `Cargo.toml`:
 clsx = "0.1.0"
 ```
 
-Then, inside your Rust code:
+Then in your code:
 
 ```rust
 use clsx::clsx;
@@ -56,17 +56,22 @@ use clsx::clsx;
 use clsx::clsx;
 
 fn main() {
-    // Strings (variadic)
-    let classes = clsx!("foo", true && "bar", "baz");
+    // 1) Basic strings
+    let classes = clsx!("foo", "bar", "baz");
     assert_eq!(classes, "foo bar baz");
 
-    // Conditional tuples
+    // 2) Conditional tuples
     let is_active = true;
     let is_disabled = false;
-    let classes = clsx!("btn", (is_active, "btn-active"), (is_disabled, "btn-disabled"));
+    let classes = clsx!(
+        "btn",
+        (is_active, "btn-active"),
+        (is_disabled, "btn-disabled")
+    );
+    // => "btn btn-active"
     assert_eq!(classes, "btn btn-active");
 
-    // HashMap
+    // 3) HashMap usage
     use std::collections::HashMap;
     let mut map = HashMap::new();
     map.insert("flex".to_string(), true);
@@ -74,71 +79,89 @@ fn main() {
     let classes = clsx!(map, "base");
     assert_eq!(classes, "flex base");
 
-    // Arrays and nesting
-    let classes = clsx!(["hello", "world"], (true, "test"), ["nested", "ok"]);
-    assert_eq!(classes, "hello world test nested ok");
+    // 4) Arrays & flattening
+    let classes = clsx!(
+        ["hello", "world"],
+        (true, "testing"),
+        ["nested", "classes"]
+    );
+    assert_eq!(classes, "hello world testing nested classes");
+
+    // 5) Options
+    let maybe_active: Option<&str> = Some("active");
+    let none_str: Option<&str> = None;
+    let classes = clsx!("btn", maybe_active, none_str, "p-4");
+    // => "btn active p-4"
+    assert_eq!(classes, "btn active p-4");
+
+    // 6) Numbers
+    let i = 10;
+    let f = 3.14;
+    let classes = clsx!("start", i, f, "end");
+    // => "start 10 3.14 end"
+    assert_eq!(classes, "start 10 3.14 end");
 }
 ```
 
 ## API
 
-### `clsx!( ...args ) -> String`
+### `clsx!(...args) -> String`
 
-The macro can accept any number of arguments. Each argument may be one of:
+**Flatten** and **conditionally** assemble space-separated classes from any combination of arguments:
 
-- A **String** or `&str` (appended if non-empty).
-- A **boolean** (ignored when standalone).
-- A **numeric** type (converted to string).
-- An **array**, **slice**, or **vector** of other `ClsxArg` implementors (flattened).
-- A **hash map** (`HashMap<String, bool>`) – Only keys whose value is `true` are appended.
-- A **tuple** of `(bool, &str)` or `(bool, String)` – appended only if the bool is `true`.
-- A **closure** returning an implementor of `ClsxArg` – evaluated at runtime, appended if non-empty.
+| Type(s)                   | Behavior                                                                         |
+|---------------------------|----------------------------------------------------------------------------------|
+| `&str`, `String`          | Appends if non-empty                                                             |
+| **booleans**              | Ignored (no classes appended)                                                    |
+| **numeric types**         | Appended as string (`10`, `3.14`, etc.)                                          |
+| **arrays/slices/vectors** | Flatten each item (recursively)                                                  |
+| **hash maps**             | (`HashMap<String, bool>`) – Only the keys whose value is `true` get appended     |
+| **tuples**                | `(bool, &str)` or `(bool, String)` => appended only if the bool is `true`        |
+| **option**                | `Option<T>` => appended if `Some`, ignored if `None`                             |
+| **closures**              | Called, and the result is appended if it’s non-empty or meets the above criteria |
 
-> _Any_ falsey or empty values are automatically discarded.
+> **Note:** Any empty strings, false booleans, or “falsey” checks automatically discard the class from the output.
 
-```rust
-clsx!(true, false, "", None, Some("valid"));
-//=> "valid"
-```
+## Advanced Usage
 
-## Modes
-
-Unlike the JavaScript version, we currently do **not** ship separate “lite” or “UMD” builds for Rust.  
-The single `clsx` crate includes all functionality, and you can simply avoid passing non-string values if you want
-“lite-like” usage.
+- **Inline if Expressions**  
+  Instead of `(bool, &str)`, you can inline `if your_bool { "class" } else { "" }`:
+  ```rust,ignore
+  let show_extra = false;
+  let classes = clsx!("core", if show_extra { "extra" } else { "" }, "final");
+  // => "core final"
+  ```
+- **Closures** returning `Option<T>`:
+  ```rust,ignore
+  let maybe = || -> Option<&'static str> { Some("maybe-yes") };
+  let never = || -> Option<&'static str> { None };
+  let output = clsx!("start", maybe, never, "end");
+  // => "start maybe-yes end"
+  ```
 
 ## Benchmarks
 
-We do not bundle cross-browser JavaScript benchmarks, but this Rust library is extremely lightweight and uses:
+We don’t provide cross-browser or JS benchmarks, but this crate is quite small and uses:
 
-- A **single pass** over all arguments
-- **Pre-allocated** string capacity (roughly 8 bytes * number_of_arguments)
-- **`std::fmt::Write`** for numeric conversions to avoid small temporary allocations
+- A **single pass** over arguments
+- **Pre-allocated** `String` capacity (approx. `8 * number_of_arguments` bytes)
+- `std::fmt::Write` for numeric conversions to avoid small temporary buffers
 
-If you’d like to measure performance for your specific case, consider adding a `#[bench]` or Criterion-based benchmark
-to your own codebase.
+For detailed performance measurements, add your own [Criterion](https://crates.io/crates/criterion) or custom
+benchmarks.
 
 ## Support
 
-All stable releases of Rust (1.60+) are supported. This library does not require any feature flags or nightly
-compiler.  
-If you encounter any issues in earlier compilers, please file an issue.
+All stable releases of Rust (>=1.60) are supported. If you find any compatibility issues, please file
+an [issue](https://github.com/yourUsername/clsx-rs/issues).
 
 ## Tailwind Support
 
-Using `clsx` with [Tailwind CSS](https://tailwindcss.com/) is straightforward. Pass your Tailwind classes into the macro
-like any other strings:
-
-```rust
-// tailwind usage
-let is_primary = true;
-let classes = clsx!("text-base", (is_primary, "text-primary"), "bg-gray-50");
-```
-
-For advanced autocompletion or specialized tooling, you may need an editor extension that recognizes `clsx!(...)` usage.
-Some solutions like the JS/TS Tailwind IntelliSense do not apply directly to Rust, though you might
-find [Tailwind Language Server](https://marketplace.visualstudio.com/items?itemName=tailwindlabs.tailwindcss-intellisense)
-helpful in certain contexts.
+Use `clsx` with [Tailwind CSS](https://tailwindcss.com/) by simply providing the Tailwind classes. For advanced
+autocompletion, your IDE needs to recognize `clsx!(...)` usage. The standard JS/TS IntelliSense extension might not work
+in Rust, but you may
+try [Tailwind Language Server](https://marketplace.visualstudio.com/items?itemName=tailwindlabs.tailwindcss-intellisense)
+or a Rust-specific extension.
 
 ## Related
 
@@ -149,5 +172,4 @@ helpful in certain contexts.
 ## License
 
 MIT © [RustForWeb](https://github.com/RustForWeb/)
-
 This library is a Rust port inspired by the original [clsx](https://github.com/lukeed/clsx) by Luke Edwards.
