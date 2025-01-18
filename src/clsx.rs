@@ -391,4 +391,23 @@ mod tests {
         let result = clsx!("hello", true, false, "world");
         assert_eq!(result, "hello world");
     }
+
+    #[test]
+    fn test_clsx_if_expression() {
+        let show_extra = false;
+        let classes = clsx!(
+            "core",
+            if show_extra { "extra" } else { "" },
+            "final"
+        );
+        assert_eq!(classes, "core final");
+    }
+
+    #[test]
+    fn test_clsx_closure_returning_option() {
+        let maybe = || -> Option<&'static str> { Some("maybe-yes") };
+        let never = || -> Option<&'static str> { None };
+        let result = clsx!("start", maybe, never, "end");
+        assert_eq!(result, "start maybe-yes end");
+    }
 }
