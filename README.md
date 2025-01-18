@@ -148,6 +148,6 @@ helpful in certain contexts.
 
 ## License
 
-MIT © (your name or org)
+MIT © [RustForWeb](https://github.com/RustForWeb/)
 
 This library is a Rust port inspired by the original [clsx](https://github.com/lukeed/clsx) by Luke Edwards.
