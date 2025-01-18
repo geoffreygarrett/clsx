@@ -4,13 +4,10 @@ version = "0.1.1"
 edition = "2021"
 authors = ["Geoffrey Garrett"]
 description = "A flexible class name composition utility for Rust, inspired by clsx and tailwind-merge."
-license = "MIT OR Apache-2.0"
+license = "MIT"
 repository = "https://github.com/geoffreygarrett/clsx"
 homepage = "https://github.com/geoffreygarrett/clsx#readme"
 documentation = "https://docs.rs/clsx"
-
-[dependencies]
-leptos = { version = "0.7.3" }
 
 [features]
 default = []
