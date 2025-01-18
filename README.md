@@ -165,7 +165,6 @@ or a Rust-specific extension.
 
 ## Related
 
-- [rclassnames](https://crates.io/crates/rclassnames) – Another Rust library with a similar approach
 - [lukeed/clsx](https://github.com/lukeed/clsx) – The original JavaScript library
 - [obj-str](https://github.com/lukeed/obj-str) – Smaller JS utility for object-based class composition
 
